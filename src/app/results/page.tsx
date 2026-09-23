@@ -2,11 +2,11 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { getUserCheck } from '@/lib/db';
+import { fetchComplianceData } from '@/lib/epa';
 
 function ResultsContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const checkId = searchParams.get('checkId');
 
   const [data, setData] = useState<any>(null);
@@ -23,20 +23,45 @@ function ResultsContent() {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/results?checkId=${checkId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.checkId) {
-          setError(d.error || 'Results not found.');
-        } else {
-          setData(d);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to load results. Please try again.');
-        setLoading(false);
-      });
+    // Use the in-memory store (works for demo; in production replace with API)
+    const check = getUserCheck(checkId);
+    if (!check) {
+      setError('Results not found. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    // Fetch compliance if we have a PWSID
+    let complianceStatus = 'data_needs_review';
+    let waterSource = null;
+    let lastReportDate = null;
+    let ccrUrl = null;
+    let compliance = null;
+
+    if (check.pwsid) {
+      compliance = fetchComplianceData(check.pwsid);
+      if (compliance) {
+        complianceStatus = compliance.status;
+        waterSource = compliance.waterSource;
+        lastReportDate = compliance.lastReportDate;
+        ccrUrl = compliance.ccrUrl;
+      }
+    }
+
+    setData({
+      checkId: check.id,
+      addressHash: check.addressHash,
+      zip: check.zip,
+      waterSystem: check.waterSystem,
+      matchConfidence: check.matchConfidence,
+      boundarySource: check.boundarySource,
+      complianceStatus,
+      compliance,
+      waterSource,
+      lastReportDate,
+      ccrUrl,
+    });
+    setLoading(false);
   }, [checkId]);
 
   if (loading) {

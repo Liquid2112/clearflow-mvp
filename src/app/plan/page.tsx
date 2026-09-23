@@ -2,11 +2,10 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { getUserRecommendation } from '@/lib/db';
 
 function PlanContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const recommendationId = searchParams.get('recommendationId');
 
   const [rec, setRec] = useState<any>(null);
@@ -36,20 +35,16 @@ function PlanContent() {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/plan?recommendationId=${recommendationId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.id && !d.recommendationId) {
-          setError(d.error || 'Recommendation not found.');
-        } else {
-          setRec(d);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to load recommendation. Please try again.');
-        setLoading(false);
-      });
+    // Use in-memory store (works for demo on static deploy)
+    const recommendation = getUserRecommendation(recommendationId);
+    if (!recommendation) {
+      setError('Recommendation not found. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    setRec(recommendation);
+    setLoading(false);
   }, [recommendationId]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -58,31 +53,17 @@ function PlanContent() {
     setFormLoading(true);
     setFormSuccess(false);
 
-    try {
-      const res = await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          phone: form.phone || null,
-          consent_timestamp: new Date().toISOString(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setFormError(data.error || 'Something went wrong.');
+    // Simulate lead submission — in production replace with API call
+    setTimeout(() => {
+      if (!form.name || !form.email || !form.city_state || !form.household_goal) {
+        setFormError('Please fill in all required fields.');
         setFormLoading(false);
         return;
       }
-
+      // Success — in production this would POST to /api/lead
       setFormSuccess(true);
       setFormLoading(false);
-    } catch {
-      setFormError('Network error. Please try again.');
-      setFormLoading(false);
-    }
+    }, 500);
   };
 
   if (loading) {
@@ -126,12 +107,12 @@ function PlanContent() {
     whole_house_carbon: { label: 'Whole-Home Carbon Filtration', color: 'from-cyan-500 to-blue-600' },
     whole_house_softener: { label: 'Whole-Home Water Softener', color: 'from-violet-500 to-purple-600' },
     whole_house_ro: { label: 'Whole-Home Reverse Osmosis', color: 'from-indigo-500 to-blue-600' },
-  }
+  };
 
   const catInfo = categoryDisplayMap[rec.treatment_category] || {
     label: rec.treatment_category,
     color: 'from-slate-600 to-slate-700',
-  }
+  };
 
   return (
     <div className="max-w-xl mx-auto">

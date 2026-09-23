@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { geocodeAddress, matchWaterSystem } from '@/lib/geo';
+import { fetchComplianceData } from '@/lib/epa';
+import { createUserCheck, getUserCheck } from '@/lib/db';
 
 export default function CheckWaterPage() {
-  const router = useRouter();
   const [address, setAddress] = useState('');
   const [useZipFallback, setUseZipFallback] = useState(false);
   const [zip, setZip] = useState('');
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [checkId, setCheckId] = useState<string | null>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -21,47 +24,69 @@ export default function CheckWaterPage() {
       return;
     }
 
-    const query = useZipFallback
-      ? { zip: zip.trim() }
-      : { address: address.trim() };
+    const queryZip = useZipFallback ? zip.trim() : '';
+    const queryAddress = useZipFallback ? '' : address.trim();
 
-    if (useZipFallback && (!zip || zip.trim().length === 0)) {
+    if (useZipFallback && queryZip.length === 0) {
       setError('Please enter a ZIP code.');
       return;
     }
 
-    if (!useZipFallback && address.trim().length === 0) {
+    if (!useZipFallback && queryAddress.length === 0) {
       setError('Please enter an address.');
       return;
     }
 
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/check-water', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: useZipFallback ? undefined : address.trim(),
-          zip: useZipFallback ? zip.trim() : undefined,
-          consent: true,
-        }),
-      });
+    // Simulate async — run the actual geo/matching logic client-side
+    setTimeout(() => {
+      try {
+        const lookup = useZipFallback ? queryZip : queryAddress;
+        const geo = geocodeAddress(lookup);
+        let pwsid: string | null = null;
+        let waterSystem = null;
 
-      const data = await res.json();
+        if (geo && geo.lat !== null && geo.lng !== null) {
+          waterSystem = matchWaterSystem(geo.lat, geo.lng);
+          if (waterSystem) {
+            pwsid = waterSystem.pwsid;
+          }
+        }
 
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong.');
+        const check = createUserCheck({
+          address: useZipFallback ? `ZIP:${queryZip}` : queryAddress,
+          zip: useZipFallback ? queryZip : null,
+          latitude: geo?.lat ?? 0,
+          longitude: geo?.lng ?? null,
+          pwsid: pwsid,
+          matchConfidence: waterSystem?.match_confidence ?? 'Low',
+          boundarySource: waterSystem?.boundary_source ?? null,
+          waterSystem: waterSystem,
+        });
+
+        setCheckId(check.id);
+        setSubmitted(true);
+      } catch {
+        setError('Something went wrong. Please try again.');
+      } finally {
         setLoading(false);
-        return;
       }
-
-      router.push(`/results?checkId=${data.checkId}`);
-    } catch {
-      setError('Network error. Please try again.');
-      setLoading(false);
-    }
+    }, 600);
   };
+
+  if (submitted && checkId) {
+    // Build results URL — use window.location for client-side routing on static deploy
+    const params = new URLSearchParams(window.location.search);
+    params.set('checkId', checkId);
+    window.location.search = params.toString();
+    return (
+      <div className="max-w-xl mx-auto text-center py-16">
+        <div className="inline-block w-10 h-10 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4" />
+        <p className="text-brand-700/60">Redirecting to results...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto">

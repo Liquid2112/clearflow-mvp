@@ -2,6 +2,9 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getUserCheck } from '@/lib/db';
+import { generateRecommendation, QuizAnswers } from '@/lib/recommendations';
+import { createRecommendation, getUserRecommendation } from '@/lib/db';
 
 const QUESTIONS = [
   {
@@ -79,20 +82,23 @@ const QUESTIONS = [
 
 export default function QuizPage() {
   const router = useRouter();
-  const checkId = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('checkId')
-    : null;
-
+  const [checkId, setCheckId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     const q = new URLSearchParams(window.location.search).get('checkId');
-    if (q && q !== checkId) {
-      router.replace(`/quiz?checkId=${q}`, { scroll: false });
+    if (q) {
+      setCheckId(q);
+      // Sync URL if different
+      const current = new URLSearchParams(window.location.search).get('checkId');
+      if (current !== q) {
+        const p = new URLSearchParams(window.location.search);
+        p.set('checkId', q);
+        window.history.replaceState({}, '', `${window.location.pathname}?${p.toString()}`);
+      }
     }
-  }, [checkId]);
+  }, []);
 
   const question = QUESTIONS[currentQuestion];
   const total = QUESTIONS.length;
@@ -113,21 +119,29 @@ export default function QuizPage() {
 
   const handleSeeRecommendation = async () => {
     if (!checkId || !isComplete) return;
-    try {
-      const res = await fetch('/api/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ checkId, answers }),
-      });
-      const data = await res.json();
-      if (res.ok && data.recommendationId) {
-        router.push(`/plan?recommendationId=${data.recommendationId}`);
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
-    } catch {
-      alert('Network error. Please try again.');
+
+    const check = getUserCheck(checkId);
+    if (!check) {
+      alert('Check not found. Please start over.');
+      return;
     }
+
+    const answersTyped = answers as unknown as QuizAnswers;
+    const rec = generateRecommendation(check.waterSystem, answersTyped, null);
+
+    const recommendation = createRecommendation({
+      checkId,
+      treatment_category: rec.treatment_category,
+      rationale: rec.rationale,
+      public_data_limitations: rec.public_data_limitations,
+      home_test_recommended: rec.home_test_recommended,
+      estimated_cost_range: rec.estimated_cost_range,
+      test_kit_suggested: rec.test_kit_suggested,
+    });
+
+    const p = new URLSearchParams(window.location.search);
+    p.set('recommendationId', recommendation.id);
+    window.location.search = p.toString();
   };
 
   const progress = ((currentQuestion + 1) / total) * 100;

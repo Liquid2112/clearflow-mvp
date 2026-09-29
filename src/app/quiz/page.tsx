@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getUserCheck } from '@/lib/db';
 import { generateRecommendation, QuizAnswers } from '@/lib/recommendations';
-import { createRecommendation, getUserRecommendation } from '@/lib/db';
+import { createRecommendation } from '@/lib/db';
 import { fetchComplianceData } from '@/lib/epa';
 import { computeWaterGrade } from '@/lib/grade';
 
@@ -12,6 +13,7 @@ const QUESTIONS = [
   {
     id: 'primary_goal',
     title: 'What matters most to you about your water?',
+    help: 'Pick the concern that is top of mind. It shapes everything downstream.',
     options: [
       { value: 'Taste/odor', label: 'Taste or odor' },
       { value: 'Reducing chlorine', label: 'Reducing chlorine' },
@@ -25,7 +27,8 @@ const QUESTIONS = [
   },
   {
     id: 'housing',
-    title: 'Do you own or rent?',
+    title: 'Do you own or rent your home?',
+    help: 'Renters usually want non-permanent options. We factor this in.',
     options: [
       { value: 'Own', label: 'Own' },
       { value: 'Rent', label: 'Rent' },
@@ -35,6 +38,7 @@ const QUESTIONS = [
   {
     id: 'scope',
     title: 'Which water are you thinking about treating?',
+    help: null,
     options: [
       { value: 'Drinking water only', label: 'Drinking water only' },
       { value: 'Whole-home', label: 'Whole-home' },
@@ -44,6 +48,7 @@ const QUESTIONS = [
   {
     id: 'household_size',
     title: 'How many people live in your household?',
+    help: null,
     options: [
       { value: '1-2', label: '1–2 people' },
       { value: '3-4', label: '3–4 people' },
@@ -54,6 +59,7 @@ const QUESTIONS = [
   {
     id: 'budget',
     title: 'What is your rough budget?',
+    help: 'A ballpark is fine — this is a starting point, not a quote.',
     options: [
       { value: 'Under $100', label: 'Under $100' },
       { value: '$100-$300', label: '$100–$300' },
@@ -65,6 +71,7 @@ const QUESTIONS = [
   {
     id: 'install_willing',
     title: 'Are you willing to install equipment under the kitchen sink?',
+    help: null,
     options: [
       { value: 'Yes', label: 'Yes' },
       { value: 'No', label: 'No' },
@@ -73,7 +80,8 @@ const QUESTIONS = [
   },
   {
     id: 'test_confirmation',
-    title: 'Would you like to confirm with a home test before purchasing treatment?',
+    title: 'Want to confirm with a home test before buying treatment?',
+    help: 'Testing first can save you from buying equipment you may not need.',
     options: [
       { value: 'Yes', label: 'Yes — test first' },
       { value: 'No', label: 'No — I am comfortable acting on public data' },
@@ -87,49 +95,44 @@ export default function QuizPage() {
   const [checkId, setCheckId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('checkId');
-    if (q) {
-      setCheckId(q);
-      // Sync URL if different
-      const current = new URLSearchParams(window.location.search).get('checkId');
-      if (current !== q) {
-        const p = new URLSearchParams(window.location.search);
-        p.set('checkId', q);
-        window.history.replaceState({}, '', `${window.location.pathname}?${p.toString()}`);
-      }
-    }
+    if (q) setCheckId(q);
   }, []);
 
   const question = QUESTIONS[currentQuestion];
   const total = QUESTIONS.length;
   const selected = answers[question.id] || '';
   const isComplete = Object.keys(answers).length === total;
+  const isLast = currentQuestion === total - 1;
 
   const handleSelect = (value: string) => {
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
+    // Auto-advance on selection (except the final question) for a guided feel.
+    if (!isLast) {
+      window.setTimeout(() => setCurrentQuestion((c) => Math.min(c + 1, total - 1)), 220);
+    }
   };
 
   const handleNext = () => {
     if (currentQuestion < total - 1) setCurrentQuestion((c) => c + 1);
   };
-
   const handleBack = () => {
     if (currentQuestion > 0) setCurrentQuestion((c) => c - 1);
   };
 
-  const handleSeeRecommendation = async () => {
+  const handleSeeRecommendation = () => {
     if (!checkId || !isComplete) return;
 
     const check = getUserCheck(checkId);
     if (!check) {
-      alert('Check not found. Please start over.');
+      router.push('/check-water');
       return;
     }
+    setSubmitting(true);
 
-    // Pull the same public compliance snapshot the results page graded, so the
-    // recommendation uses real contaminant data and the grade travels forward.
     const compliance = check.pwsid ? fetchComplianceData(check.pwsid) : null;
     const grade = computeWaterGrade(compliance);
 
@@ -152,132 +155,143 @@ export default function QuizPage() {
       },
     });
 
-    // The recommendation is persisted in sessionStorage (see store.ts), so it
-    // survives the navigation to /plan. router.push respects basePath.
     router.push(`/plan?recommendationId=${encodeURIComponent(recommendation.id)}`);
   };
 
   const progress = ((currentQuestion + 1) / total) * 100;
 
   return (
-    <div className="max-w-xl mx-auto py-8">
+    <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
       {checkId && (
-        <a
+        <Link
           href={`/results?checkId=${checkId}`}
-          className="inline-flex items-center gap-1.5 text-brand-900 hover:text-brand-600 transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 no-underline transition-colors hover:text-brand-700"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Back to results
-        </a>
+        </Link>
       )}
 
-      <div className="mb-10">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-semibold text-brand-900">Question {currentQuestion + 1} of {total}</span>
-          <span className="text-sm text-brand-600/70">{Math.round(progress)}% complete</span>
+      {/* Progress */}
+      <div className="mt-6 mb-8">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold text-ink-800">Question {currentQuestion + 1} of {total}</span>
+          <span className="text-sm text-ink-400">{Math.round(progress)}% complete</span>
         </div>
-        <div className="w-full h-2 bg-brand-100 rounded-full overflow-hidden">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-ink-100" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
           <div
-            className="h-full bg-brand-600 transition-all duration-300 ease-out rounded-full"
+            className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-6 sm:p-8">
-        <div className="flex gap-1.5 mb-6 justify-center">
+      <div className="surface-card p-6 sm:p-8">
+        {/* Step dots */}
+        <div className="mb-6 flex justify-center gap-1.5">
           {QUESTIONS.map((q, i) => (
             <button
               key={q.id}
               onClick={() => setCurrentQuestion(i)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === currentQuestion ? 'bg-brand-600 w-5' : answers[q.id] ? 'bg-brand-400' : 'bg-brand-200'
+              className={`h-2 rounded-full transition-all ${
+                i === currentQuestion ? 'w-6 bg-brand-600' : answers[q.id] ? 'w-2 bg-brand-300' : 'w-2 bg-ink-200'
               }`}
-              aria-label={`Go to question ${i + 1}`}
+              aria-label={`Go to question ${i + 1}${answers[q.id] ? ' (answered)' : ''}`}
             />
           ))}
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-bold text-brand-900 mb-6 leading-snug">
-          {question.title}
-        </h2>
+        {/* Animated question block — keyed so it re-mounts (and re-animates) per question. */}
+        <div key={currentQuestion} className="animate-fade-up">
+          <h1 className="text-2xl leading-snug text-ink-900">{question.title}</h1>
+          {question.help && <p className="mt-2 text-sm text-ink-500">{question.help}</p>}
 
-        <div className="space-y-2.5">
-          {question.options.map((opt) => {
-            const isSelected = selected === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => handleSelect(opt.value)}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
-                  isSelected
-                    ? 'border-brand-600 bg-brand-50 text-brand-900'
-                    : 'border-brand-200 bg-white hover:border-brand-300 hover:bg-brand-50/50 text-ink'
-                }`}
-              >
-                <span
-                  className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    isSelected ? 'border-brand-600 bg-brand-600' : 'border-brand-300 bg-white'
+          <fieldset className="mt-6 space-y-2.5">
+            <legend className="sr-only">{question.title}</legend>
+            {question.options.map((opt) => {
+              const isSelected = selected === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleSelect(opt.value)}
+                  aria-pressed={isSelected}
+                  className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
+                    isSelected
+                      ? 'border-brand-500 bg-brand-50 text-ink-900 shadow-ring'
+                      : 'border-ink-200 bg-white text-ink-700 hover:border-brand-300 hover:bg-brand-50/40'
                   }`}
                 >
-                  {isSelected && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </span>
-                <span className={`font-medium ${isSelected ? 'font-bold' : 'font-normal'}`}>{opt.label}</span>
-              </button>
-            );
-          })}
+                  <span
+                    className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      isSelected ? 'border-brand-600 bg-brand-600' : 'border-ink-300 bg-white'
+                    }`}
+                  >
+                    {isSelected && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={isSelected ? 'font-semibold' : 'font-medium'}>{opt.label}</span>
+                </button>
+              );
+            })}
+          </fieldset>
         </div>
       </div>
 
+      {/* Nav */}
       <div className="mt-6 flex items-center justify-between">
         <button
           onClick={handleBack}
           disabled={currentQuestion === 0}
-          className={`py-2.5 px-5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 ${
-            currentQuestion === 0 ? 'text-brand-300 cursor-not-allowed' : 'text-brand-900 hover:bg-brand-50'
+          className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 font-semibold transition-colors ${
+            currentQuestion === 0 ? 'cursor-not-allowed text-ink-300' : 'text-ink-700 hover:bg-ink-100'
           }`}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Back
         </button>
 
-        {currentQuestion < total - 1 ? (
+        {!isLast ? (
           <button
             onClick={handleNext}
             disabled={!selected}
-            className={`py-2.5 px-6 rounded-lg font-semibold transition-colors ${
-              selected ? 'bg-brand-900 hover:bg-brand-800 text-white' : 'bg-brand-200 text-brand-400 cursor-not-allowed'
+            className={`inline-flex items-center gap-1.5 rounded-xl px-6 py-2.5 font-semibold transition-all ${
+              selected ? 'bg-ink-900 text-white hover:bg-ink-800 active:translate-y-px' : 'cursor-not-allowed bg-ink-100 text-ink-400'
             }`}
           >
             Next
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
         ) : (
           <button
             onClick={handleSeeRecommendation}
-            disabled={!isComplete}
-            className={`py-2.5 px-6 rounded-lg font-semibold transition-colors ${
-              isComplete ? 'bg-brand-900 hover:bg-brand-800 text-white' : 'bg-brand-200 text-brand-400 cursor-not-allowed'
+            disabled={!isComplete || submitting}
+            className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 font-semibold transition-all ${
+              isComplete && !submitting ? 'bg-brand-600 text-white hover:bg-brand-700 active:translate-y-px' : 'cursor-not-allowed bg-ink-100 text-ink-400'
             }`}
           >
-            See my recommendation
+            {submitting ? 'Building your plan…' : 'See my recommendation'}
+            {!submitting && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            )}
           </button>
         )}
       </div>
 
-      <p className="mt-8 text-xs text-brand-600/60 text-center leading-relaxed">
-        Your answers are used only to shape your recommendation. ClearFlow uses a deterministic rules engine — no AI decides your treatment path.
+      <p className="mx-auto mt-8 max-w-md text-center text-xs leading-relaxed text-ink-400">
+        Your answers only shape your recommendation. ClearFlow uses a deterministic rules engine — no AI
+        decides your treatment path.
       </p>
     </div>
   );

@@ -121,7 +121,7 @@ function determineCategory(
         if (install_willing === 'Yes') return 'under_sink_carbon'
         return 'faucet'
       }
-      if (budget === '$100–$300') {
+      if (budget === '$100-$300') {
         if (install_willing === 'Yes') return 'under_sink_ro'
         return 'under_sink_carbon'
       }
@@ -134,7 +134,7 @@ function determineCategory(
     if (budget === 'Under $100') {
       return 'under_sink_carbon' // Best option for whole-home concern on tight budget
     }
-    if (budget === '$100–$300') {
+    if (budget === '$100-$300') {
       return 'whole_house_carbon'
     }
     return 'whole_house_carbon' // or softener if hardness also a concern
@@ -188,7 +188,7 @@ function determineCategory(
         if (install_willing === 'Yes') return 'under_sink_carbon'
         return 'pitcher'
       }
-      if (budget === '$100–$300') {
+      if (budget === '$100-$300') {
         if (install_willing === 'Yes') return 'under_sink_ro'
         return 'under_sink_carbon'
       }

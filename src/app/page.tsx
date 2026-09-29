@@ -1,250 +1,212 @@
 import Link from 'next/link';
 
+/**
+ * A static preview of the Whoop-style water grade ring used on the results
+ * page. Rendered as layered SVG (no chart lib) so the hero shows the actual
+ * product artifact rather than clip-art.
+ */
+function GradeRingPreview() {
+  const size = 260;
+  const stroke = 20;
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = 0.84; // B-grade preview
+  const dash = circ * pct;
+
+  return (
+    <div className="relative mx-auto w-[260px] max-w-full">
+      {/* Soft aura behind the ring */}
+      <div className="absolute inset-0 -z-10 rounded-full bg-brand-200/40 blur-3xl" aria-hidden="true" />
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-[0_20px_40px_rgba(13,27,42,0.18)]" role="img" aria-label="Example water grade of B, score 84 out of 100">
+        <defs>
+          <linearGradient id="hero-ring" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#22c55e" />
+            <stop offset="100%" stopColor="#17b0bd" />
+          </linearGradient>
+        </defs>
+        <circle cx={c} cy={c} r={r} fill="#ffffff" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke="#eef2f5" strokeWidth={stroke} />
+        <circle
+          cx={c}
+          cy={c}
+          r={r}
+          fill="none"
+          stroke="url(#hero-ring)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ - dash}`}
+          transform={`rotate(-90 ${c} ${c})`}
+        />
+        <text x={c} y={c - 6} textAnchor="middle" className="font-display" style={{ fontSize: 76, fontWeight: 700, fill: '#15803d' }}>
+          B
+        </text>
+        <text x={c} y={c + 28} textAnchor="middle" style={{ fontSize: 18, fontWeight: 600, fill: '#5b7085' }}>
+          84 / 100
+        </text>
+      </svg>
+
+      {/* Floating sub-score chips to suggest the "metric" depth */}
+      <div className="absolute -left-6 top-8 hidden rounded-xl border border-ink-100 bg-white px-3 py-2 shadow-card sm:block">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Chlorine</p>
+        <p className="text-sm font-bold text-brand-700">Fair</p>
+      </div>
+      <div className="absolute -right-4 bottom-10 hidden rounded-xl border border-ink-100 bg-white px-3 py-2 shadow-card sm:block">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">Compliance</p>
+        <p className="text-sm font-bold text-brand-700">Clean record</p>
+      </div>
+    </div>
+  );
+}
+
+const STEPS = [
+  {
+    n: '01',
+    title: 'Enter your location',
+    body: 'Drop in your address or ZIP. We match it to the public water system most likely serving you — no account, no test kit required to start.',
+    icon: (
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z M12 13a3 3 0 100-6 3 3 0 000 6z" />
+    ),
+  },
+  {
+    n: '02',
+    title: 'Get your water grade',
+    body: 'We translate EPA and utility compliance data into a single Whoop-style grade, with sub-scores for contaminants, chlorine, hardness and the utility record.',
+    icon: <path d="M12 2a10 10 0 100 20 10 10 0 000-20z M12 8v4l3 2" />,
+  },
+  {
+    n: '03',
+    title: 'Ship a plan, then improve',
+    body: 'Answer a short quiz and get a deterministic, no-upsell treatment plan — plus a projected grade so you can see how far each step moves the needle.',
+    icon: <path d="M22 11.08V12a10 10 0 11-5.93-9.14 M22 4L12 14.01l-3-3" />,
+  },
+];
+
 export default function HomePage() {
   return (
-    <div>
-      {/* Header nav */}
-      <header className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" className="text-brand-700">
-              <path
-                d="M50 8C28 30 18 55 27 73C36 87 50 83 50 83C50 83 64 87 73 73C82 55 72 30 50 8Z"
-                fill="#0c4a6e"
-              />
-              <path
-                d="M50 30C38 38 33 48 36 56C39 63 46 60 50 60C54 60 61 63 64 56C67 48 62 38 50 30Z"
-                fill="#0891b2"
-              />
-            </svg>
-            <span className="text-lg font-bold text-brand-900">ClearFlow</span>
-          </Link>
-          <nav className="flex items-center gap-1">
-            <Link
-              href="/how-it-works"
-              className="text-sm text-brand-700/70 hover:text-brand-900 px-3 py-1.5 rounded-lg hover:bg-brand-100 transition-colors"
-            >
-              How it works
-            </Link>
-            <Link
-              href="/check-water"
-              className="text-sm font-semibold text-white bg-brand-900 hover:bg-brand-800 px-4 py-2 rounded-lg transition-colors"
-            >
-              Check My Water
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div className="bg-hero-mesh">
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-8 lg:pb-24 lg:pt-20">
+        <div className="animate-fade-up">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+            Built on public EPA &amp; SDWIS data
+          </span>
 
-      {/* Hero */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 text-center">
-        {/* Water droplet SVG visual */}
-        <div className="flex justify-center mb-10">
-          <div className="relative w-32 h-32 sm:w-40 sm:h-40">
-            <svg
-              className="w-full h-full drop-shadow-lg"
-              viewBox="0 0 120 120"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <ellipse
-                cx="60"
-                cy="65"
-                rx="52"
-                ry="52"
-                fill="#e0f2fe"
-                className="animate-pulse"
-                opacity="0.5"
-              />
-              <path
-                d="M60 15C35 42 22 68 32 88C42 105 60 100 60 100C60 100 78 105 88 88C98 68 85 42 60 15Z"
-                fill="#0c4a6e"
-              />
-              <path
-                d="M60 30C45 42 38 55 42 66C46 75 55 72 60 72C65 72 74 75 78 66C82 55 75 42 60 30Z"
-                fill="#0891b2"
-              />
-              <ellipse
-                cx="48"
-                cy="52"
-                rx="6"
-                ry="10"
-                fill="white"
-                opacity="0.3"
-                transform="rotate(-20 48 52)"
-              />
-            </svg>
-            <svg
-              className="absolute -top-1 -right-2 w-6 h-6 animate-bounce"
-              viewBox="0 0 24 24"
-              fill="none"
-              style={{ animationDuration: '3s' }}
-            >
-              <path
-                d="M12 2C9 6 8 10 9 13C10 15.5 12 15 12 15C12 15 14 15.5 15 13C16 10 15 6 12 2Z"
-                fill="#0891b2"
-                opacity="0.6"
-              />
-            </svg>
-            <svg
-              className="absolute -bottom-1 -left-3 w-5 h-5 animate-bounce"
-              viewBox="0 0 24 24"
-              fill="none"
-              style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}
-            >
-              <path
-                d="M12 2C9 6 8 10 9 13C10 15.5 12 15 12 15C12 15 14 15.5 15 13C16 10 15 6 12 2Z"
-                fill="#0c4a6e"
-                opacity="0.4"
-              />
-            </svg>
+          <h1 className="mt-5 text-4xl leading-[1.05] text-ink-900 sm:text-5xl lg:text-6xl">
+            Know your water.
+            <br />
+            <span className="italic text-brand-700">Grade it.</span> Improve it.
+          </h1>
+
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-600">
+            ClearFlow turns free public water-system data into a personalized water grade and a
+            shippable treatment plan. Like a fitness score for your tap — one you can actually move.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link href="/check-water" className="btn-primary text-base">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              Check my water
+            </Link>
+            <Link href="/how-it-works" className="btn-ghost text-base">
+              See how it works
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
-        </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-brand-900 leading-tight mb-4">
-          Understand your water.
-          <br />
-          <span className="text-brand-600">Choose the right next step.</span>
-        </h1>
-
-        <p className="text-lg sm:text-xl text-brand-800/70 max-w-2xl mx-auto leading-relaxed mb-8">
-          ClearFlow connects your location to public water-system information, explains it in plain English,
-          and recommends a tailored water-treatment path.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/check-water"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-brand-900 hover:bg-brand-800 text-white font-semibold text-base rounded-xl transition-colors shadow-md hover:shadow-lg"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            Check My Water
-          </Link>
-          <Link
-            href="/how-it-works"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white hover:bg-brand-50 text-brand-900 border border-brand-200 font-semibold text-base rounded-xl transition-colors shadow-sm"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
-            How it works
-          </Link>
-        </div>
-
-        {/* Trust copy */}
-        <div className="mt-10 max-w-lg mx-auto p-4 bg-brand-50 rounded-xl border border-brand-100 text-left">
-          <div className="flex gap-3 items-start">
-            <svg
-              className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+          <div className="mt-8 flex items-start gap-3 rounded-xl border border-brand-100 bg-white/70 p-4 backdrop-blur-sm">
+            <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <p className="text-sm text-brand-800/80 leading-relaxed">
-              <strong>Uses public EPA and local utility data.</strong> A home test is recommended before making household-specific treatment decisions.
+            <p className="text-sm leading-relaxed text-ink-600">
+              <strong className="text-ink-800">A likely match, not a tap test.</strong> We show what public
+              data says about your system. A home test is recommended before household-specific decisions.
             </p>
           </div>
         </div>
+
+        <div className="animate-fade-in lg:pl-6">
+          <GradeRingPreview />
+        </div>
       </section>
 
-      {/* Features strip */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="bg-white rounded-2xl border border-brand-100 shadow-sm p-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      {/* ── How it works (3 steps, varied rhythm) ────────────── */}
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="max-w-2xl">
+          <p className="eyebrow">How it works</p>
+          <h2 className="mt-2 text-3xl text-ink-900 sm:text-4xl">
+            From a public dataset to a plan you can ship — in three steps.
+          </h2>
+        </div>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <div
+              key={step.n}
+              className={`surface-card flex flex-col p-6 ${i === 1 ? 'md:mt-8' : ''} ${i === 2 ? 'md:mt-16' : ''}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {step.icon}
+                  </svg>
+                </span>
+                <span className="font-display text-2xl font-semibold text-ink-200">{step.n}</span>
+              </div>
+              <h3 className="mt-4 text-lg text-ink-900">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-500">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Credibility band ─────────────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="surface-card overflow-hidden">
+          <div className="grid gap-px bg-ink-100 sm:grid-cols-3">
             {[
-              {
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c4a6e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                ),
-                title: 'Your location, matched to a water system',
-                desc: 'We use your address to find the public water system most likely serving your area.',
-              },
-              {
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c4a6e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-                  </svg>
-                ),
-                title: 'Plain-English public data snapshot',
-                desc: 'We translate EPA and utility compliance data into what it actually means for you.',
-              },
-              {
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c4a6e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M16.5 12.5c-1.3 1.3-3 2.2-5 2.5" />
-                    <path d="M7.5 12.5c1.3 1.3 3 2.2 5 2.5" />
-                  </svg>
-                ),
-                title: 'A recommendation, not a sales pitch',
-                desc: 'Your answers drive a rules-based recommendation — no hidden agenda, no upsell.',
-              },
-            ].map((item, i) => (
-              <div key={i} className="text-center sm:text-left">
-                <div className="w-12 h-12 mx-auto sm:mx-0 bg-brand-100 rounded-xl flex items-center justify-center mb-3">
-                  {item.icon}
-                </div>
-                <h3 className="font-semibold text-brand-900 mb-1.5">{item.title}</h3>
-                <p className="text-sm text-brand-700/70 leading-relaxed">{item.desc}</p>
+              { stat: '100%', label: 'Public data', sub: 'EPA SDWIS / ECHO compliance records and Consumer Confidence Reports.' },
+              { stat: 'Deterministic', label: 'No AI guesswork', sub: 'The same inputs always produce the same grade and plan. You can see why.' },
+              { stat: 'No upsell', label: 'Not a sales pitch', sub: 'We are not paid to recommend a product. A test-first path is always offered.' },
+            ].map((item) => (
+              <div key={item.label} className="bg-white p-6">
+                <p className="font-display text-2xl font-semibold text-brand-700">{item.stat}</p>
+                <p className="mt-1 text-sm font-semibold text-ink-800">{item.label}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ink-500">{item.sub}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA section */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 text-center">
-        <div className="bg-brand-900 rounded-2xl p-8 sm:p-12 shadow-lg">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            Ready to understand your water?
-          </h2>
-          <p className="text-brand-200 text-base mb-6 max-w-md mx-auto leading-relaxed">
-            Start with your address. We will find your water system, show you what the public data says, and help you decide what to do next.
-          </p>
-          <Link
-            href="/check-water"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-white hover:bg-brand-100 text-brand-900 font-semibold text-base rounded-xl transition-colors"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            Check My Water
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 text-center">
-        <div className="border-t border-brand-100 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-brand-600/60">
-          <p>ClearFlow — Understand your water. Choose the right next step.</p>
-          <div className="flex items-center gap-4">
-            <Link href="/how-it-works" className="hover:text-brand-900 transition-colors underline underline-offset-2">
-              How it works
-            </Link>
-            <Link href="/data-sources" className="hover:text-brand-900 transition-colors underline underline-offset-2">
-              Data sources
-            </Link>
-            <Link href="/privacy" className="hover:text-brand-900 transition-colors underline underline-offset-2">
-              Privacy
+      {/* ── Closing CTA ──────────────────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-4xl bg-ink-900 px-6 py-12 text-center shadow-lift sm:px-12 sm:py-16">
+          <div className="pointer-events-none absolute inset-0 bg-hero-mesh opacity-60" aria-hidden="true" />
+          <div className="relative">
+            <h2 className="mx-auto max-w-2xl text-3xl text-white sm:text-4xl">
+              Curious what grade your water would get?
+            </h2>
+            <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-ink-300">
+              Start with your address. We will find your water system, grade it, and help you decide the
+              right next step.
+            </p>
+            <Link href="/check-water" className="btn-accent mt-8 text-base">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              Check my water
             </Link>
           </div>
         </div>
-      </footer>
+      </section>
     </div>
   );
 }

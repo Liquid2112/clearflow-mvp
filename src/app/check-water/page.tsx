@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { geocodeAddress, matchWaterSystem } from '@/lib/geo';
 import { createUserCheck } from '@/lib/db';
@@ -21,15 +22,15 @@ export default function CheckWaterPage() {
     setError(null);
 
     if (!consent) {
-      setError('You must check the consent box to continue.');
+      setError('Please confirm you understand this is a likely match, not a tap test.');
       return;
     }
 
     const queryZip = useZipFallback ? zip.trim() : '';
     const queryAddress = useZipFallback ? '' : address.trim();
 
-    if (useZipFallback && queryZip.length === 0) {
-      setError('Please enter a ZIP code.');
+    if (useZipFallback && queryZip.length < 5) {
+      setError('Please enter a 5-digit US ZIP code.');
       return;
     }
 
@@ -80,128 +81,171 @@ export default function CheckWaterPage() {
 
   if (submitted && checkId) {
     return (
-      <div className="max-w-xl mx-auto text-center py-16">
-        <div className="inline-block w-10 h-10 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4" />
-        <p className="text-brand-700/60">Redirecting to results...</p>
+      <div className="mx-auto max-w-xl px-4 py-24 text-center">
+        <div className="relative mx-auto mb-6 h-16 w-16">
+          <div className="absolute inset-0 rounded-full border-2 border-brand-100" />
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-brand-600" />
+          <span className="absolute inset-0 flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#12909f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </span>
+        </div>
+        <h1 className="text-2xl text-ink-900">Matching your water system…</h1>
+        <p className="mt-2 text-ink-500">Grading the public data now. This only takes a moment.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-xl mx-auto">
-      <a
+    <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
+      <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-brand-900 mb-8 hover:text-brand-600 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 no-underline transition-colors hover:text-brand-700"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
         Back to home
-      </a>
+      </Link>
 
-      <div className="mb-2">
-        <h1 className="text-3xl sm:text-4xl font-bold text-brand-900">Check your water</h1>
-        <p className="mt-2 text-lg text-brand-800/70">
-          Enter your address to find your likely public water system and what public data says about it.
+      <div className="mt-8">
+        <p className="eyebrow">Step 1 of 4 · Location</p>
+        <h1 className="mt-2 text-3xl text-ink-900 sm:text-4xl">Check your water</h1>
+        <p className="mt-3 text-lg leading-relaxed text-ink-600">
+          Enter your address to find your likely public water system and get a grade based on public data.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-6 mt-6">
+      <div className="surface-card mt-6 p-6 sm:p-7">
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-2 rounded-lg border border-ember-200 bg-ember-50 p-3 text-sm text-ember-800"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex items-center gap-3 p-4 bg-brand-50 rounded-lg border border-brand-100">
-            <input
-              type="checkbox"
-              id="zipFallback"
-              checked={useZipFallback}
-              onChange={(e) => setUseZipFallback(e.target.checked)}
-              className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
-            />
-            <label htmlFor="zipFallback" className="text-sm font-medium text-brand-900 cursor-pointer select-none">
-              Use ZIP code instead of address <span className="text-brand-600/60 ml-1">(US only)</span>
-            </label>
+          {/* Address vs ZIP toggle as a segmented control */}
+          <div>
+            <span className="mb-2 block text-sm font-semibold text-ink-800">Look up by</span>
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-ink-200 bg-ink-50 p-1" role="tablist" aria-label="Lookup method">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!useZipFallback}
+                onClick={() => setUseZipFallback(false)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                  !useZipFallback ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'
+                }`}
+              >
+                Street address
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={useZipFallback}
+                onClick={() => setUseZipFallback(true)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                  useZipFallback ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-800'
+                }`}
+              >
+                ZIP code
+              </button>
+            </div>
           </div>
 
-          {!useZipFallback && (
+          {!useZipFallback ? (
             <div>
-              <label htmlFor="address" className="block text-sm font-semibold text-ink mb-1.5">
+              <label htmlFor="address" className="mb-1.5 block text-sm font-semibold text-ink-800">
                 Street address
               </label>
               <input
                 id="address"
                 type="text"
+                autoComplete="street-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="123 Main St, City, State"
-                className="w-full px-4 py-2.5 border border-brand-200 rounded-lg bg-white text-ink placeholder:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 transition-shadow"
+                placeholder="123 Main St, Nashville, TN"
+                className="w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-ink-900 placeholder:text-ink-300 transition-shadow focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
               />
-              <p className="mt-1.5 text-xs text-brand-600/60">
+              <p className="mt-1.5 text-xs text-ink-400">
                 US addresses only. We use public EPA data to find your water system.
               </p>
             </div>
-          )}
-
-          {useZipFallback && (
+          ) : (
             <div>
-              <label htmlFor="zip" className="block text-sm font-semibold text-ink mb-1.5">
+              <label htmlFor="zip" className="mb-1.5 block text-sm font-semibold text-ink-800">
                 ZIP code
               </label>
               <input
                 id="zip"
                 type="text"
+                inputMode="numeric"
+                autoComplete="postal-code"
                 value={zip}
                 onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
                 placeholder="37201"
                 maxLength={5}
-                className="w-full px-4 py-2.5 border border-brand-200 rounded-lg bg-white text-ink placeholder:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 transition-shadow"
+                className="w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-lg tracking-[0.3em] text-ink-900 placeholder:tracking-normal placeholder:text-ink-300 transition-shadow focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
               />
-              <p className="mt-1.5 text-xs text-brand-600/60">
-                Enter a US ZIP code. Results are more general than an address match.
+              <p className="mt-1.5 text-xs text-ink-400">
+                Try 37201 (Nashville) for a demo. A ZIP match is more general than an address match.
               </p>
             </div>
           )}
 
-          <div className="pt-2 border-t border-brand-100">
+          <label
+            htmlFor="consent"
+            className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-100 bg-ink-50/60 p-4 transition-colors hover:border-brand-200"
+          >
             <input
               type="checkbox"
               id="consent"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
             />
-            <label htmlFor="consent" className="ml-2 text-sm text-brand-800/80 cursor-pointer select-none leading-relaxed">
-              I understand this creates a <strong>likely water-system match</strong>, not a household water test.
-              The public data shown is about the water system serving this area — not a test of my specific water.
-            </label>
-          </div>
+            <span className="text-sm leading-relaxed text-ink-600">
+              I understand this creates a <strong className="text-ink-800">likely water-system match</strong>,
+              not a household water test. The public data shown describes the system serving this area.
+            </span>
+          </label>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-6 bg-brand-900 hover:bg-brand-800 text-white rounded-lg font-semibold text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="btn-primary w-full text-base disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+              <>
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
-                Checking...
-              </span>
+                Checking…
+              </>
             ) : (
-              'Check My Water'
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                Check my water
+              </>
             )}
           </button>
         </form>
       </div>
 
-      <p className="mt-6 text-xs text-brand-600/60 text-center leading-relaxed">
-        ClearFlow uses public EPA and local utility data. A home test is recommended before making household-specific treatment decisions.
+      <p className="mx-auto mt-6 max-w-md text-center text-xs leading-relaxed text-ink-400">
+        ClearFlow uses public EPA and local utility data. A home test is recommended before making
+        household-specific treatment decisions.
       </p>
     </div>
   );

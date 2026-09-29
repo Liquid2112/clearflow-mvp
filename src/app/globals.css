@@ -2,51 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: #1e293b;
-  background-color: #f0f9ff;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: theme('colors.ink.800');
+    /* Subtle layered water texture: a soft mesh over a near-white base so the
+       whole app reads as crafted, not flat template-white. */
+    background-color: #f6f9fb;
+    background-image:
+      radial-gradient(58% 45% at 12% -5%, rgba(23, 176, 189, 0.10) 0%, rgba(23, 176, 189, 0) 60%),
+      radial-gradient(45% 40% at 100% 0%, rgba(249, 115, 22, 0.06) 0%, rgba(249, 115, 22, 0) 55%),
+      linear-gradient(180deg, #f6f9fb 0%, #eef4f7 100%);
+    background-attachment: fixed;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    color: theme('colors.ink.900');
+    text-wrap: balance;
+  }
+
+  h1 {
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: theme('colors.brand.700');
+    text-underline-offset: 3px;
+  }
+
+  a:hover {
+    color: theme('colors.brand.600');
+  }
+
+  /* Accessible, brand-tinted focus ring for keyboard users only. */
+  :focus-visible {
+    outline: 2px solid theme('colors.brand.500');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button {
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+  }
 }
 
-h1, h2, h3, h4 {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+@layer components {
+  /* Reusable primary/secondary button lockups so CTA styling stays consistent. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink-900 px-6 py-3 font-semibold text-white shadow-card transition-all;
+    @apply hover:bg-ink-800 hover:shadow-lift active:translate-y-px;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white shadow-card transition-all;
+    @apply hover:bg-brand-700 hover:shadow-lift active:translate-y-px;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white px-6 py-3 font-semibold text-ink-800 shadow-sm transition-all;
+    @apply hover:border-brand-300 hover:bg-brand-50 hover:text-ink-900 active:translate-y-px;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-card;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-brand-700;
+  }
 }
 
-a {
-  color: #0c4a6e;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+/* Motion is opt-in: everything animates by default but collapses instantly for
+   users who prefer reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  a, button, .transition-all, .transition-colors, .transition-shadow, .transition-transform {
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }
 
-a:hover {
-  color: #0891b2;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-button {
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-}
-
-button:active {
-  transform: scale(0.98);
-}
-
-input, textarea, select {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-/* Custom scrollbar */
+/* Custom scrollbar tuned to the ink/brand palette. */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #f0f9ff;
+  background: #eef4f7;
 }
 ::-webkit-scrollbar-thumb {
-  background: #0c4a6e;
-  border-radius: 3px;
+  background: #b4c1cd;
+  border: 2px solid #eef4f7;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.brand.500');
 }

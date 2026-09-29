@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { getUserCheck } from '@/lib/db';
 import { generateRecommendation, QuizAnswers } from '@/lib/recommendations';
 import { createRecommendation, getUserRecommendation } from '@/lib/db';
+import { fetchComplianceData } from '@/lib/epa';
+import { computeWaterGrade } from '@/lib/grade';
 
 const QUESTIONS = [
   {
@@ -126,8 +128,13 @@ export default function QuizPage() {
       return;
     }
 
+    // Pull the same public compliance snapshot the results page graded, so the
+    // recommendation uses real contaminant data and the grade travels forward.
+    const compliance = check.pwsid ? fetchComplianceData(check.pwsid) : null;
+    const grade = computeWaterGrade(compliance);
+
     const answersTyped = answers as unknown as QuizAnswers;
-    const rec = generateRecommendation(check.waterSystem, answersTyped, null);
+    const rec = generateRecommendation(check.waterSystem, answersTyped, compliance);
 
     const recommendation = createRecommendation({
       checkId,
@@ -137,6 +144,12 @@ export default function QuizPage() {
       home_test_recommended: rec.home_test_recommended,
       estimated_cost_range: rec.estimated_cost_range,
       test_kit_suggested: rec.test_kit_suggested,
+      grade: {
+        score: grade.score,
+        letter: grade.letter,
+        drivers: grade.drivers,
+        gradable: grade.gradable,
+      },
     });
 
     // The recommendation is persisted in sessionStorage (see store.ts), so it

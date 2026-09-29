@@ -64,6 +64,7 @@ export function createRecommendation(input: {
   home_test_recommended: boolean
   estimated_cost_range: string
   test_kit_suggested: boolean
+  grade?: RecommendationRecord['grade']
 }): RecommendationRecord {
   const id = generateId('rec')
   const record: RecommendationRecord = {
@@ -75,6 +76,7 @@ export function createRecommendation(input: {
     home_test_recommended: input.home_test_recommended,
     estimated_cost_range: input.estimated_cost_range,
     test_kit_suggested: input.test_kit_suggested,
+    grade: input.grade ?? null,
     createdAt: new Date().toISOString(),
   }
   return saveRecommendation(record)

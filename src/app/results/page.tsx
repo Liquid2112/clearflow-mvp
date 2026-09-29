@@ -4,6 +4,8 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getUserCheck } from '@/lib/db';
 import { fetchComplianceData } from '@/lib/epa';
+import { computeWaterGrade } from '@/lib/grade';
+import WaterGradeCard from '@/components/WaterGradeCard';
 
 function ResultsContent() {
   const searchParams = useSearchParams();
@@ -48,6 +50,9 @@ function ResultsContent() {
       }
     }
 
+    // Deterministic Whoop-style grade computed from the public compliance data.
+    const grade = computeWaterGrade(compliance);
+
     setData({
       checkId: check.id,
       addressHash: check.addressHash,
@@ -60,6 +65,7 @@ function ResultsContent() {
       waterSource,
       lastReportDate,
       ccrUrl,
+      grade,
     });
     setLoading(false);
   }, [checkId]);
@@ -193,6 +199,13 @@ function ResultsContent() {
         </svg>
         Back to home
       </a>
+
+      {/* Whoop-style water grade — the product centerpiece, shown above the raw data. */}
+      {data.grade && (
+        <div className="mb-6">
+          <WaterGradeCard grade={data.grade} systemName={ws ? ws.name : null} />
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-brand-100 shadow-sm overflow-hidden">
         {/* Header */}

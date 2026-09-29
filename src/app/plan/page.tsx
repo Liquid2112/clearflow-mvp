@@ -2,13 +2,39 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getUserRecommendation } from '@/lib/db';
+import { getUserRecommendation, getUserCheck } from '@/lib/db';
+import { fetchComplianceData } from '@/lib/epa';
+import { computeWaterGrade, projectGradeWithPlan, type WaterGrade } from '@/lib/grade';
+
+function chipColors(score: number): { bg: string; ring: string; text: string } {
+  if (score >= 80) return { bg: 'bg-green-50', ring: 'border-green-200', text: 'text-green-700' };
+  if (score >= 70) return { bg: 'bg-green-50', ring: 'border-green-200', text: 'text-green-700' };
+  if (score >= 60) return { bg: 'bg-amber-50', ring: 'border-amber-200', text: 'text-amber-700' };
+  return { bg: 'bg-red-50', ring: 'border-red-200', text: 'text-red-700' };
+}
+
+function GradeChip({ label, score, letter, muted }: { label: string; score: number; letter: string; muted?: boolean }) {
+  const c = chipColors(score);
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className={`w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center ${muted ? 'bg-brand-50 border-brand-200' : `${c.bg} ${c.ring}`}`}
+      >
+        <span className={`text-3xl font-black leading-none ${muted ? 'text-brand-400' : c.text}`}>{letter}</span>
+        <span className={`text-xs font-semibold tabular-nums mt-0.5 ${muted ? 'text-brand-400' : c.text}`}>{score}/100</span>
+      </div>
+      <span className="mt-2 text-xs font-semibold text-brand-700/70">{label}</span>
+    </div>
+  );
+}
 
 function PlanContent() {
   const searchParams = useSearchParams();
   const recommendationId = searchParams.get('recommendationId');
 
   const [rec, setRec] = useState<any>(null);
+  const [grade, setGrade] = useState<WaterGrade | null>(null);
+  const [projected, setProjected] = useState<WaterGrade | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +70,19 @@ function PlanContent() {
     }
 
     setRec(recommendation);
+
+    // Re-derive the full water grade deterministically from the matched
+    // system's public data, then project how this plan could improve it. This
+    // reinforces the "iterate on your grade" loop. The projection is a
+    // clearly-labeled estimate, not a measured result.
+    const check = getUserCheck(recommendation.checkId);
+    const compliance = check?.pwsid ? fetchComplianceData(check.pwsid) : null;
+    const current = computeWaterGrade(compliance);
+    if (current.gradable) {
+      setGrade(current);
+      setProjected(projectGradeWithPlan(current, recommendation.treatment_category));
+    }
+
     setLoading(false);
   }, [recommendationId]);
 
@@ -133,7 +172,34 @@ function PlanContent() {
         <h1 className="text-2xl sm:text-3xl font-bold text-brand-900">
           Your recommended next step
         </h1>
+        {grade && (
+          <p className="mt-2 text-base text-brand-800/80 leading-relaxed">
+            Your water scored <strong>{grade.score} ({grade.letter})</strong>. Here is how to push it higher.
+          </p>
+        )}
       </div>
+
+      {/* Grade + projected improvement */}
+      {grade && projected && (
+        <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-6 mb-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-600/60 mb-4">
+            How your grade could improve with this plan
+          </p>
+          <div className="flex items-center justify-center gap-4 sm:gap-6">
+            <GradeChip label="Today" score={grade.score} letter={grade.letter} muted />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0891b2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            <GradeChip label="With this plan" score={projected.score} letter={projected.letter} />
+          </div>
+          <p className="mt-4 text-xs text-brand-600/60 text-center leading-relaxed">
+            {projected.score > grade.score
+              ? `Estimated improvement of about ${projected.score - grade.score} points.`
+              : 'Testing first does not change your water, so your grade holds until you treat it.'}
+            {' '}This is a deterministic estimate based on the typical effect of this treatment, not a measured result. Re-test after installing to confirm.
+          </p>
+        </div>
+      )}
 
       {/* Recommendation card */}
       <div className={`bg-gradient-to-br ${catInfo.color} rounded-xl p-6 text-white shadow-lg mb-6`}>

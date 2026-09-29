@@ -49,6 +49,23 @@ const STUB_ZIPS: Record<string, { lat: number; lng: number; city: string; state:
   '37237': { lat: 36.331, lng: -86.711, city: 'Madison', state: 'TN' },
   '37243': { lat: 36.351, lng: -86.791, city: 'Hendersonville', state: 'TN' },
   '37245': { lat: 36.371, lng: -86.761, city: 'Hermitage', state: 'TN' },
+  // Brentwood, TN (Williamson County) — hard groundwater system.
+  '37027': { lat: 35.982, lng: -86.737, city: 'Brentwood', state: 'TN' },
+  // Phoenix, AZ — very hard water, strong chlorine.
+  '85003': { lat: 33.451, lng: -112.074, city: 'Phoenix', state: 'AZ' },
+  '85004': { lat: 33.451, lng: -112.070, city: 'Phoenix', state: 'AZ' },
+  '85012': { lat: 33.508, lng: -112.070, city: 'Phoenix', state: 'AZ' },
+  // Riverside, MI — historical lead violation system.
+  '48501': { lat: 43.012, lng: -83.687, city: 'Riverside', state: 'MI' },
+  '48502': { lat: 43.020, lng: -83.690, city: 'Riverside', state: 'MI' },
+  // Portland, OR — soft surface water.
+  '97201': { lat: 45.512, lng: -122.685, city: 'Portland', state: 'OR' },
+  '97205': { lat: 45.522, lng: -122.686, city: 'Portland', state: 'OR' },
+  '97209': { lat: 45.530, lng: -122.681, city: 'Portland', state: 'OR' },
+  // Austin, TX — hard surface water, elevated disinfection byproducts.
+  '78701': { lat: 30.270, lng: -97.742, city: 'Austin', state: 'TX' },
+  '78704': { lat: 30.242, lng: -97.766, city: 'Austin', state: 'TX' },
+  '78745': { lat: 30.208, lng: -97.798, city: 'Austin', state: 'TX' },
 }
 
 export function geocodeAddress(address: string): GeoResult | null {
@@ -148,6 +165,34 @@ const MOCK_BOUNDARIES: Record<string, Array<{ lat: number; lng: number }>> = {
     { lat: 36.1, lng: -86.6 },
     { lat: 35.9, lng: -86.6 },
   ],
+  // Phoenix, AZ (Maricopa County)
+  'AZPW0009012': [
+    { lat: 33.2, lng: -112.4 },
+    { lat: 33.8, lng: -112.4 },
+    { lat: 33.8, lng: -111.8 },
+    { lat: 33.2, lng: -111.8 },
+  ],
+  // Riverside, MI (regional river-fed)
+  'MIPW0003456': [
+    { lat: 42.8, lng: -83.9 },
+    { lat: 43.2, lng: -83.9 },
+    { lat: 43.2, lng: -83.5 },
+    { lat: 42.8, lng: -83.5 },
+  ],
+  // Portland, OR metro
+  'ORPW0007890': [
+    { lat: 45.3, lng: -122.9 },
+    { lat: 45.7, lng: -122.9 },
+    { lat: 45.7, lng: -122.4 },
+    { lat: 45.3, lng: -122.4 },
+  ],
+  // Austin, TX (Travis County)
+  'TXPW0004567': [
+    { lat: 30.0, lng: -98.0 },
+    { lat: 30.5, lng: -98.0 },
+    { lat: 30.5, lng: -97.5 },
+    { lat: 30.0, lng: -97.5 },
+  ],
 }
 
 export function matchWaterSystem(
@@ -179,6 +224,50 @@ export function matchWaterSystem(
           service_connections: 16000,
           boundary_source: 'EPA Community Water System service area layer',
           coverage_area: 'Brentwood, TN (Williamson County)',
+          match_confidence: 'High' as const,
+        },
+        'AZPW0009012': {
+          pwsid: 'AZPW0009012',
+          name: 'City of Phoenix Water Services Department',
+          state: 'AZ',
+          system_type: 'Community Water System',
+          population_served: 1600000,
+          service_connections: 430000,
+          boundary_source: 'EPA Community Water System service area layer',
+          coverage_area: 'Phoenix, AZ metro (Maricopa County)',
+          match_confidence: 'High' as const,
+        },
+        'MIPW0003456': {
+          pwsid: 'MIPW0003456',
+          name: 'Riverside Municipal Water Authority',
+          state: 'MI',
+          system_type: 'Community Water System',
+          population_served: 95000,
+          service_connections: 34000,
+          boundary_source: 'EPA Community Water System service area layer',
+          coverage_area: 'Riverside, MI (regional river-fed system)',
+          match_confidence: 'High' as const,
+        },
+        'ORPW0007890': {
+          pwsid: 'ORPW0007890',
+          name: 'Portland Water Bureau',
+          state: 'OR',
+          system_type: 'Community Water System',
+          population_served: 990000,
+          service_connections: 190000,
+          boundary_source: 'EPA Community Water System service area layer',
+          coverage_area: 'Portland, OR metro (Bull Run watershed)',
+          match_confidence: 'High' as const,
+        },
+        'TXPW0004567': {
+          pwsid: 'TXPW0004567',
+          name: 'Austin Water',
+          state: 'TX',
+          system_type: 'Community Water System',
+          population_served: 1030000,
+          service_connections: 260000,
+          boundary_source: 'EPA Community Water System service area layer',
+          coverage_area: 'Austin, TX metro (Travis County)',
           match_confidence: 'High' as const,
         },
       }

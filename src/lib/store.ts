@@ -40,6 +40,15 @@ export interface RecommendationRecord {
   home_test_recommended: boolean
   estimated_cost_range: string
   test_kit_suggested: boolean
+  // Snapshot of the water grade at recommendation time, so the plan page can
+  // reference the user's grade and show a projected improvement without
+  // needing to re-match the system. Optional for backward compatibility.
+  grade?: {
+    score: number
+    letter: string
+    drivers: string[]
+    gradable: boolean
+  } | null
   createdAt: string
 }
 

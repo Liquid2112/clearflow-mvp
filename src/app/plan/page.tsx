@@ -96,15 +96,27 @@ function PlanContent() {
     // dashboard can see it later in this browser. There is no server under the
     // static export, so this browser store is the pilot's only "database".
     setTimeout(() => {
-      if (!form.name || !form.email || !form.city_state || !form.household_goal) {
+      const name = form.name.trim();
+      const email = form.email.trim();
+      const cityState = form.city_state.trim();
+      if (!name || !email || !cityState || !form.household_goal) {
         setFormError('Please fill in all required fields.');
         setFormLoading(false);
         return;
       }
+      // Basic email-format check (client-side only; there is no server to
+      // validate against under the static export). A simple, permissive regex
+      // catches obvious typos like a missing "@" or domain without being strict.
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        setFormError('Please enter a valid email address.');
+        setFormLoading(false);
+        return;
+      }
       createLead({
-        name: form.name.trim(),
-        email: form.email.trim(),
-        city_state: form.city_state.trim(),
+        name,
+        email,
+        city_state: cityState,
         household_goal: form.household_goal,
         phone: form.phone.trim() || null,
         consent_timestamp: new Date().toISOString(),

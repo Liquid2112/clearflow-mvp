@@ -285,7 +285,7 @@ function ResultsContent() {
 
       {/* CTAs */}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Link href={`/quiz?checkId=${data.checkId}`} className="btn-primary flex-1">
+        <Link href={`/quiz?checkId=${encodeURIComponent(data.checkId)}`} className="btn-primary flex-1">
           Continue to your plan
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14M12 5l7 7-7 7" />

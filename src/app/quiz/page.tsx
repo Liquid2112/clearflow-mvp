@@ -7,7 +7,6 @@ import { getUserCheck } from '@/lib/db';
 import { generateRecommendation, QuizAnswers } from '@/lib/recommendations';
 import { createRecommendation } from '@/lib/db';
 import { fetchComplianceData } from '@/lib/epa';
-import { computeWaterGrade } from '@/lib/grade';
 
 const QUESTIONS = [
   {
@@ -134,11 +133,12 @@ export default function QuizPage() {
     setSubmitting(true);
 
     const compliance = check.pwsid ? fetchComplianceData(check.pwsid) : null;
-    const grade = computeWaterGrade(compliance);
 
     const answersTyped = answers as unknown as QuizAnswers;
     const rec = generateRecommendation(check.waterSystem, answersTyped, compliance);
 
+    // The plan page re-derives the water grade deterministically from the same
+    // check's compliance data, so there is no grade snapshot to persist here.
     const recommendation = createRecommendation({
       checkId,
       treatment_category: rec.treatment_category,
@@ -147,12 +147,6 @@ export default function QuizPage() {
       home_test_recommended: rec.home_test_recommended,
       estimated_cost_range: rec.estimated_cost_range,
       test_kit_suggested: rec.test_kit_suggested,
-      grade: {
-        score: grade.score,
-        letter: grade.letter,
-        drivers: grade.drivers,
-        gradable: grade.gradable,
-      },
     });
 
     router.push(`/plan?recommendationId=${encodeURIComponent(recommendation.id)}`);
@@ -164,7 +158,7 @@ export default function QuizPage() {
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
       {checkId && (
         <Link
-          href={`/results?checkId=${checkId}`}
+          href={`/results?checkId=${encodeURIComponent(checkId)}`}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 no-underline transition-colors hover:text-brand-700"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

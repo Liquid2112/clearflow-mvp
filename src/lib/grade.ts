@@ -188,6 +188,11 @@ function scoreCompliance(status: ComplianceResult['status'], drivers: string[]):
       return 45
     case 'data_needs_review':
     default:
+      // Defensive branch: with the current bundled data every gradable system
+      // resolves to one of the statuses above, so this path is not reached
+      // today. It is kept intentionally for when real, live compliance data is
+      // wired in and may report an ambiguous/under-review status. Do not remove
+      // it as dead code — it is the honest fallback for that future case.
       drivers.push('Public compliance data for this system needs review')
       return 60
   }

@@ -7,6 +7,21 @@ export interface GeoResult {
   formatted_address: string
 }
 
+// Canonical water-system shape used across the app (db.ts, results page,
+// WaterQualityBadge). snake_case is canonical because the matcher below and
+// results/page.tsx already consume this shape.
+export interface WaterSystem {
+  pwsid: string
+  name: string
+  state: string
+  system_type: string
+  population_served: number
+  service_connections: number
+  boundary_source: string
+  coverage_area: string
+  match_confidence: 'High' | 'Medium' | 'Low'
+}
+
 // Stub geocoding: returns Nashville-area coordinates for known ZIP codes
 // In production, call a geocoding API
 const STUB_ZIPS: Record<string, { lat: number; lng: number; city: string; state: string }> = {
@@ -138,17 +153,7 @@ const MOCK_BOUNDARIES: Record<string, Array<{ lat: number; lng: number }>> = {
 export function matchWaterSystem(
   lat: number,
   lng: number
-): {
-  pwsid: string
-  name: string
-  state: string
-  system_type: string
-  population_served: number
-  service_connections: number
-  boundary_source: string
-  coverage_area: string
-  match_confidence: 'High' | 'Medium' | 'Low'
-} | null {
+): WaterSystem | null {
   // Find which system boundary contains the point
   for (const [pwsid, polygon] of Object.entries(MOCK_BOUNDARIES)) {
     if (pointInPolygon(lat, lng, polygon)) {

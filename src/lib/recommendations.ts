@@ -13,13 +13,15 @@ export interface QuizAnswers {
   test_confirmation: string
 }
 
+// Mirrors the canonical WaterSystem shape (snake_case) so the quiz can pass the
+// matched system straight through without any field remapping.
 export interface WaterSystemInfo {
   pwsid: string
   name: string
   state: string
-  systemType: string
-  populationServed: number
-  serviceConnections: number
+  system_type: string
+  population_served: number
+  service_connections: number
 }
 
 export interface Recommendation {

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { geocodeAddress, matchWaterSystem } from '@/lib/geo';
-import { fetchComplianceData } from '@/lib/epa';
-import { createUserCheck, getUserCheck } from '@/lib/db';
+import { createUserCheck } from '@/lib/db';
 
 export default function CheckWaterPage() {
+  const router = useRouter();
   const [address, setAddress] = useState('');
   const [useZipFallback, setUseZipFallback] = useState(false);
   const [zip, setZip] = useState('');
@@ -67,19 +68,17 @@ export default function CheckWaterPage() {
 
         setCheckId(check.id);
         setSubmitted(true);
+        // The check is now persisted in sessionStorage (see store.ts), so it
+        // survives the navigation to /results. router.push respects basePath.
+        router.push(`/results?checkId=${encodeURIComponent(check.id)}`);
       } catch {
         setError('Something went wrong. Please try again.');
-      } finally {
         setLoading(false);
       }
     }, 600);
   };
 
   if (submitted && checkId) {
-    // Build results URL — use window.location for client-side routing on static deploy
-    const params = new URLSearchParams(window.location.search);
-    params.set('checkId', checkId);
-    window.location.search = params.toString();
     return (
       <div className="max-w-xl mx-auto text-center py-16">
         <div className="inline-block w-10 h-10 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4" />

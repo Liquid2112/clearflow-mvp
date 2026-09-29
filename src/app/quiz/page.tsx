@@ -139,9 +139,9 @@ export default function QuizPage() {
       test_kit_suggested: rec.test_kit_suggested,
     });
 
-    const p = new URLSearchParams(window.location.search);
-    p.set('recommendationId', recommendation.id);
-    window.location.search = p.toString();
+    // The recommendation is persisted in sessionStorage (see store.ts), so it
+    // survives the navigation to /plan. router.push respects basePath.
+    router.push(`/plan?recommendationId=${encodeURIComponent(recommendation.id)}`);
   };
 
   const progress = ((currentQuestion + 1) / total) * 100;

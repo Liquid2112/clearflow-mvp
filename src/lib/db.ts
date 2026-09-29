@@ -1,26 +1,32 @@
-import { hashString } from '@/lib/utils'
-import { geocodeAddress, matchWaterSystem } from '@/lib/geo'
-import { fetchComplianceData } from '@/lib/epa'
+import { hashString, generateId } from '@/lib/utils'
+import type { WaterSystem } from '@/lib/geo'
+import {
+  saveCheck,
+  getCheck,
+  saveRecommendation,
+  getRecommendation,
+  saveLead,
+  getLeads as getStoredLeads,
+  getStats as getStoredStats,
+  type CheckRecord,
+  type RecommendationRecord,
+  type LeadRecord,
+  type ClearFlowStats,
+} from '@/lib/store'
 
-export interface WaterSystem {
-  pwsid: string
-  name: string
-  state: string
-  systemType: string
-  populationServed: number
-  serviceConnections: number
-  boundarySource: string
-  coverageArea: string
-  matchConfidence: 'High' | 'Medium' | 'Low'
-}
+export type { LeadRecord, ClearFlowStats }
 
-// In-memory store for MVP (replace with real DB in production)
-const checks = new Map<string, ReturnType<typeof createUserCheck>>()
-const recommendations = new Map<string, ReturnType<typeof createRecommendation>>()
-const leadsList = new Map<string, ReturnType<typeof createLead>>()
-let checkCounter = 0
-let recCounter = 0
-let leadCounter = 0
+// Re-export the canonical water-system shape so existing callers that import
+// `WaterSystem` from '@/lib/db' keep working. The single source of truth for
+// this type lives in geo.ts (snake_case), matching what the matcher returns
+// and what the results page consumes.
+export type { WaterSystem }
+
+// Check and recommendation records are persisted client-side via sessionStorage,
+// while leads and aggregate stats live in localStorage so the admin dashboard
+// (a separate route) can read the activity from this browser (see store.ts).
+// The previous module-level Map was wiped on every full-page navigation, which
+// broke the whole flow and made leads invisible to admin.
 
 export function createUserCheck(input: {
   address: string
@@ -30,13 +36,13 @@ export function createUserCheck(input: {
   pwsid: string | null
   matchConfidence: string
   boundarySource: string | null
-  waterSystem: any
-}) {
-  const id = `check-${++checkCounter}`
+  waterSystem: WaterSystem | null
+}): CheckRecord {
+  const id = generateId('check')
   // Hash the address for storage — do NOT keep the raw address text.
   // Per the privacy policy: raw addresses are not stored by default.
   const addressHash = hashString(input.address)
-  const record = {
+  const record: CheckRecord = {
     id,
     addressHash,
     // Raw address intentionally omitted — only the hash is retained.
@@ -49,12 +55,11 @@ export function createUserCheck(input: {
     waterSystem: input.waterSystem,
     createdAt: new Date().toISOString(),
   }
-  checks.set(id, record)
-  return record
+  return saveCheck(record)
 }
 
-export function getUserCheck(checkId: string) {
-  return checks.get(checkId) || null
+export function getUserCheck(checkId: string): CheckRecord | null {
+  return getCheck(checkId)
 }
 
 export function createRecommendation(input: {
@@ -65,9 +70,9 @@ export function createRecommendation(input: {
   home_test_recommended: boolean
   estimated_cost_range: string
   test_kit_suggested: boolean
-}) {
-  const id = `rec-${++recCounter}`
-  const record = {
+}): RecommendationRecord {
+  const id = generateId('rec')
+  const record: RecommendationRecord = {
     id,
     checkId: input.checkId,
     treatment_category: input.treatment_category,
@@ -78,12 +83,11 @@ export function createRecommendation(input: {
     test_kit_suggested: input.test_kit_suggested,
     createdAt: new Date().toISOString(),
   }
-  recommendations.set(id, record)
-  return record
+  return saveRecommendation(record)
 }
 
-export function getUserRecommendation(recommendationId: string) {
-  return recommendations.get(recommendationId) || null
+export function getUserRecommendation(recommendationId: string): RecommendationRecord | null {
+  return getRecommendation(recommendationId)
 }
 
 export function createLead(input: {
@@ -93,10 +97,9 @@ export function createLead(input: {
   household_goal: string
   phone: string | null
   consent_timestamp: string
-}) {
-  const id = `lead-${++leadCounter}`
-  const record = {
-    id,
+}): LeadRecord {
+  const record: LeadRecord = {
+    id: generateId('lead'),
     email: input.email,
     name: input.name,
     city_state: input.city_state,
@@ -105,32 +108,13 @@ export function createLead(input: {
     consent_timestamp: input.consent_timestamp,
     createdAt: new Date().toISOString(),
   }
-  leadsList.set(id, record)
-  return record
+  return saveLead(record)
 }
 
-export function getLeads() {
-  return Array.from(leadsList.values())
+export function getLeads(): LeadRecord[] {
+  return getStoredLeads()
 }
 
-export function getStats() {
-  const recs = Array.from(recommendations.values());
-  const categoryCounts: Record<string, number> = {};
-  let matchFailures = 0;
-  for (const c of checks.values()) {
-    if (!c.pwsid || c.matchConfidence === 'Low' || c.matchConfidence === 'No match') {
-      matchFailures++;
-    }
-  }
-  for (const r of recs) {
-    const cat = r.treatment_category.toLowerCase().replace(/\s*\+.*$/, '').replace(/\s*—.*$/, '').trim();
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-  }
-  return {
-    total_checks: checks.size,
-    total_leads: leadsList.size,
-    total_recommendations: recommendations.size,
-    match_failures: matchFailures,
-    top_treatment_categories: categoryCounts,
-  };
+export function getStats(): ClearFlowStats {
+  return getStoredStats()
 }

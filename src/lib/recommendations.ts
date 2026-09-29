@@ -13,13 +13,15 @@ export interface QuizAnswers {
   test_confirmation: string
 }
 
+// Mirrors the canonical WaterSystem shape (snake_case) so the quiz can pass the
+// matched system straight through without any field remapping.
 export interface WaterSystemInfo {
   pwsid: string
   name: string
   state: string
-  systemType: string
-  populationServed: number
-  serviceConnections: number
+  system_type: string
+  population_served: number
+  service_connections: number
 }
 
 export interface Recommendation {
@@ -119,7 +121,7 @@ function determineCategory(
         if (install_willing === 'Yes') return 'under_sink_carbon'
         return 'faucet'
       }
-      if (budget === '$100–$300') {
+      if (budget === '$100-$300') {
         if (install_willing === 'Yes') return 'under_sink_ro'
         return 'under_sink_carbon'
       }
@@ -132,7 +134,7 @@ function determineCategory(
     if (budget === 'Under $100') {
       return 'under_sink_carbon' // Best option for whole-home concern on tight budget
     }
-    if (budget === '$100–$300') {
+    if (budget === '$100-$300') {
       return 'whole_house_carbon'
     }
     return 'whole_house_carbon' // or softener if hardness also a concern
@@ -186,7 +188,7 @@ function determineCategory(
         if (install_willing === 'Yes') return 'under_sink_carbon'
         return 'pitcher'
       }
-      if (budget === '$100–$300') {
+      if (budget === '$100-$300') {
         if (install_willing === 'Yes') return 'under_sink_ro'
         return 'under_sink_carbon'
       }

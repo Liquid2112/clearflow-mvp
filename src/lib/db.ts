@@ -5,9 +5,16 @@ import {
   getCheck,
   saveRecommendation,
   getRecommendation,
+  saveLead,
+  getLeads as getStoredLeads,
+  getStats as getStoredStats,
   type CheckRecord,
   type RecommendationRecord,
+  type LeadRecord,
+  type ClearFlowStats,
 } from '@/lib/store'
+
+export type { LeadRecord, ClearFlowStats }
 
 // Re-export the canonical water-system shape so existing callers that import
 // `WaterSystem` from '@/lib/db' keep working. The single source of truth for
@@ -15,12 +22,11 @@ import {
 // and what the results page consumes.
 export type { WaterSystem }
 
-// Check and recommendation records are persisted client-side via sessionStorage
-// (see store.ts). The previous module-level Map was wiped on every full-page
-// navigation (window.location.search = ...), which broke the entire flow. Leads
-// remain in-memory for now; the admin surface that reads them is a later feature.
-const leadsList = new Map<string, ReturnType<typeof createLead>>()
-let leadCounter = 0
+// Check and recommendation records are persisted client-side via sessionStorage,
+// while leads and aggregate stats live in localStorage so the admin dashboard
+// (a separate route) can read the activity from this browser (see store.ts).
+// The previous module-level Map was wiped on every full-page navigation, which
+// broke the whole flow and made leads invisible to admin.
 
 export function createUserCheck(input: {
   address: string
@@ -93,10 +99,9 @@ export function createLead(input: {
   household_goal: string
   phone: string | null
   consent_timestamp: string
-}) {
-  const id = `lead-${++leadCounter}`
-  const record = {
-    id,
+}): LeadRecord {
+  const record: LeadRecord = {
+    id: generateId('lead'),
     email: input.email,
     name: input.name,
     city_state: input.city_state,
@@ -105,10 +110,13 @@ export function createLead(input: {
     consent_timestamp: input.consent_timestamp,
     createdAt: new Date().toISOString(),
   }
-  leadsList.set(id, record)
-  return record
+  return saveLead(record)
 }
 
-export function getLeads() {
-  return Array.from(leadsList.values())
+export function getLeads(): LeadRecord[] {
+  return getStoredLeads()
+}
+
+export function getStats(): ClearFlowStats {
+  return getStoredStats()
 }

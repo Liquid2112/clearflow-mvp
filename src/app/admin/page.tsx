@@ -1,129 +1,138 @@
 'use client';
 
-import { useState, FormEvent, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
+import Link from 'next/link';
+import { getLeads, getStats, type LeadRecord, type ClearFlowStats } from '@/lib/db';
 
-interface Lead {
-  id: string;
-  email: string;
-  name: string;
-  city_state: string;
-  household_goal: string;
-  created_at: string;
+// The admin password is compiled in at build time via NEXT_PUBLIC_ADMIN_PASSWORD.
+// This is a demo lock only (a NEXT_PUBLIC_* value ships in the client bundle),
+// which is appropriate for a static-export pilot with no server. Reading it at
+// module scope keeps the build-time inlining explicit.
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? '';
+
+// Human-readable labels for the internal treatment-category keys used by the
+// recommendation engine.
+const CATEGORY_LABELS: Record<string, string> = {
+  test_kit: 'Test first (confirm before you commit)',
+  pitcher: 'Carbon pitcher filter',
+  faucet: 'Faucet-mount carbon filter',
+  under_sink_carbon: 'Under-sink carbon filtration',
+  under_sink_ro: 'Under-sink reverse osmosis',
+  whole_house_carbon: 'Whole-home carbon filtration',
+  whole_house_softener: 'Whole-home water softener',
+  whole_house_ro: 'Whole-home reverse osmosis',
+};
+
+function formatDate(iso: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-interface Stats {
-  total_leads: number;
-  match_failures: number;
-  top_treatment_categories: Record<string, number>;
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="surface-card p-5">
+      <dt className="pb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">{label}</dt>
+      <dd className="font-display text-3xl font-bold text-ink-900 tabular-nums">{value}</dd>
+    </div>
+  );
 }
 
 export default function AdminPage() {
+  const adminEnabled = ADMIN_PASSWORD.length > 0;
+
   const [password, setPassword] = useState('');
-  const [token, setToken] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [stats, setStats] = useState<ClearFlowStats | null>(null);
 
-  const handleAuth = async (e: FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await res.json();
-
-      if (data.authenticated && data.token) {
-        setToken(data.token);
-        setAuthenticated(true);
-        setPassword('');
-        setAuthError(null);
-        // Load data immediately
-        fetchData(data.token);
-      } else {
-        setAuthError(data.error || 'Authentication failed.');
-        setToken(null);
-        setAuthenticated(false);
-      }
-    } catch {
-      setAuthError('Network error. Please try again.');
-    }
-
-    setLoading(false);
-  };
-
-  const fetchData = useCallback(async (tkn: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [leadsRes, statsRes] = await Promise.all([
-        fetch(`/api/admin/leads?token=${tkn}`),
-        fetch(`/api/admin/stats?token=${tkn}`),
-      ]);
-
-      const [leadsData, statsData] = await Promise.all([leadsRes.json(), statsRes.json()]);
-
-      if (leadsRes.ok) {
-        setLeads(leadsData.leads || []);
-      } else {
-        setError(leadsData.error || 'Could not load leads.');
-      }
-
-      if (statsRes.ok) {
-        setStats(statsData);
-      }
-    } catch {
-      setError('Network error loading dashboard data.');
-    }
-    setLoading(false);
+  const loadData = useCallback(() => {
+    setStats(getStats());
+    // Newest first for the table.
+    setLeads([...getLeads()].reverse());
   }, []);
 
+  // When authenticated, refresh from the browser store on mount.
+  useEffect(() => {
+    if (authenticated) loadData();
+  }, [authenticated, loadData]);
+
+  const handleAuth = (e: FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    if (password === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+      setPassword('');
+    } else {
+      setAuthError('Incorrect password.');
+    }
+  };
+
   const handleLogout = () => {
-    setToken(null);
     setAuthenticated(false);
     setLeads([]);
     setStats(null);
-    setError(null);
   };
 
-  // Render login screen
+  const backLink = (
+    <Link
+      href="/"
+      className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-ink-500 no-underline transition-colors hover:text-brand-700"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      Back to home
+    </Link>
+  );
+
+  // Admin disabled — no password configured at build time. Never hang on a fetch.
+  if (!adminEnabled) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
+        {backLink}
+        <div className="surface-card p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-ink-100">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0d1b2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          </div>
+          <h1 className="text-2xl text-ink-900">Admin is disabled</h1>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
+            No admin password is configured for this build. Set{' '}
+            <code className="rounded bg-ink-100 px-1 py-0.5 text-xs text-ink-700">NEXT_PUBLIC_ADMIN_PASSWORD</code>{' '}
+            before building to enable the pilot dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Login screen.
   if (!authenticated) {
     return (
-      <div className="max-w-md mx-auto py-12">
-        <a
-          href="/"
-          className="inline-flex items-center gap-1.5 text-brand-900 hover:text-brand-600 transition-colors mb-8"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to home
-        </a>
-
-        <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-8">
-          <h1 className="text-2xl font-bold text-brand-900 mb-2">Admin</h1>
-          <p className="text-brand-700/70 text-sm mb-6">
-            Password-protected dashboard for ClearFlow pilot leads and stats.
+      <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
+        {backLink}
+        <div className="surface-card p-8">
+          <p className="eyebrow mb-2">Pilot operations</p>
+          <h1 className="text-2xl text-ink-900">Admin</h1>
+          <p className="mb-6 mt-2 text-sm leading-relaxed text-ink-500">
+            A client-side dashboard for ClearFlow pilot leads and activity held in this browser.
           </p>
 
           <form onSubmit={handleAuth} className="space-y-4">
             {authError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <div role="alert" className="rounded-lg border border-ember-200 bg-ember-50 p-3 text-sm text-ember-800">
                 {authError}
               </div>
             )}
 
             <div>
-              <label htmlFor="adminPassword" className="block text-sm font-medium text-ink mb-1.5">
+              <label htmlFor="adminPassword" className="mb-1.5 block text-sm font-semibold text-ink-800">
                 Admin password
               </label>
               <input
@@ -132,143 +141,126 @@ export default function AdminPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
-                className="w-full px-4 py-2.5 border border-brand-200 rounded-lg bg-white text-ink placeholder:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 transition-shadow"
+                className="w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-ink-900 placeholder:text-ink-300 transition-shadow focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
                 placeholder="Enter admin password"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !password}
-              className="w-full py-2.5 px-4 bg-brand-900 hover:bg-brand-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
+            <button type="submit" disabled={!password} className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60">
+              Sign in
             </button>
           </form>
 
-          <p className="mt-4 text-xs text-brand-600/60 leading-relaxed">
-            Set the <code>ADMIN_PASSWORD</code> environment variable to enable admin access. Without it, the admin panel is disabled.
+          <p className="mt-4 text-xs leading-relaxed text-ink-400">
+            This gate uses a build-time <code className="rounded bg-ink-100 px-1 py-0.5 text-[0.7rem] text-ink-600">NEXT_PUBLIC_ADMIN_PASSWORD</code>{' '}
+            and is a demo lock, not real security. All data shown is held in this browser only.
           </p>
         </div>
       </div>
     );
   }
 
-  // Render dashboard
+  const topCategories = stats
+    ? Object.entries(stats.topTreatmentCategories).sort((a, b) => b[1] - a[1])
+    : [];
+
+  // Dashboard.
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-brand-900">Admin dashboard</h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-brand-700 hover:text-brand-900 underline underline-offset-2"
-        >
-          Sign out
-        </button>
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <p className="eyebrow mb-1">Pilot operations</p>
+          <h1 className="text-2xl text-ink-900 sm:text-3xl">Admin dashboard</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={loadData}
+            className="text-sm font-medium text-ink-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-sm font-medium text-ink-500 underline underline-offset-2 transition-colors hover:text-brand-700"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-5">
-          <dt className="text-xs text-brand-600/60 font-medium pb-1">Total leads</dt>
-          <dd className="text-3xl font-bold text-brand-900">{stats?.total_leads ?? 0}</dd>
-        </div>
-        <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-5">
-          <dt className="text-xs text-brand-600/60 font-medium pb-1">Match failures</dt>
-          <dd className="text-3xl font-bold text-brand-900">{stats?.match_failures ?? 0}</dd>
-        </div>
-        <div className="bg-white rounded-xl border border-brand-100 shadow-sm p-5">
-          <dt className="text-xs text-brand-600/60 font-medium pb-1">Recommendations issued</dt>
-          <dd className="text-3xl font-bold text-brand-900">
-            {stats?.top_treatment_categories
-              ? Object.values(stats.top_treatment_categories).reduce((a: number, b: number) => a + b, 0)
-              : 0}
-          </dd>
-        </div>
+      <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm leading-relaxed text-ink-600">
+        This is demo/pilot data held in <strong>this browser only</strong> (localStorage). There is no
+        server behind ClearFlow. Numbers reflect the checks, recommendations, and pilot signups made in this
+        browser and clear if you clear site data.
       </div>
+
+      {/* Stat cards */}
+      <dl className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Checks run" value={stats?.totalChecks ?? 0} />
+        <StatCard label="Recommendations" value={stats?.totalRecommendations ?? 0} />
+        <StatCard label="Pilot leads" value={stats?.totalLeads ?? 0} />
+        <StatCard label="Match failures" value={stats?.matchFailures ?? 0} />
+      </dl>
 
       {/* Match failures note */}
-      {stats?.match_failures !== undefined && stats.match_failures > 0 && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800/80">
-          <strong className="block mb-1">{stats.match_failures} match failure(s)</strong>
-          These are address checks where we could not confidently match a public water system. They may indicate private wells, rural properties, or addresses outside mapped service areas.
+      {stats && stats.matchFailures > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800/90">
+          <strong className="mb-1 block">{stats.matchFailures} match failure(s)</strong>
+          These are address checks where we could not confidently match a public water system. They may
+          indicate private wells, rural properties, or addresses outside mapped service areas.
         </div>
       )}
 
       {/* Top treatment categories */}
-      {stats?.top_treatment_categories && Object.keys(stats.top_treatment_categories).length > 0 && (
+      {topCategories.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-bold text-brand-900 mb-3">Top treatment categories</h2>
-          <div className="bg-white rounded-xl border border-brand-100 shadow-sm divide-y divide-brand-100">
-            {Object.entries(stats.top_treatment_categories)
-              .sort((a, b) => b[1] - a[1])
-              .map(([category, count]) => (
-                <div key={category} className="px-5 py-3 flex items-center justify-between">
-                  <span className="text-sm text-ink font-medium">{category}</span>
-                  <span className="text-sm text-brand-600/60 bg-brand-50 px-2 py-0.5 rounded-full">
-                    {count}
-                  </span>
-                </div>
-              ))}
+          <h2 className="mb-3 text-lg font-semibold text-ink-900">Top treatment categories</h2>
+          <div className="surface-card divide-y divide-ink-100">
+            {topCategories.map(([category, count]) => (
+              <div key={category} className="flex items-center justify-between px-5 py-3">
+                <span className="text-sm font-medium text-ink-800">
+                  {CATEGORY_LABELS[category] ?? category}
+                </span>
+                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-brand-700">
+                  {count}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Leads table */}
       <div>
-        <h2 className="text-lg font-bold text-brand-900 mb-3">Leads</h2>
-        {loading ? (
-          <div className="text-center py-8 text-brand-700/60">
-            <div className="inline-block w-8 h-8 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-3" />
-            Loading...
-          </div>
-        ) : error ? (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mb-4">
-            {error}
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-600 text-center">
-            No leads yet.
+        <h2 className="mb-3 text-lg font-semibold text-ink-900">Pilot leads</h2>
+        {leads.length === 0 ? (
+          <div className="rounded-xl border border-ink-100 bg-ink-50/60 p-6 text-center text-sm text-ink-500">
+            No pilot leads yet in this browser. Complete a check and join the pilot on the plan page to see
+            one appear here.
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-brand-100 shadow-sm overflow-hidden">
+          <div className="surface-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-brand-50 border-b border-brand-100">
-                    <th className="text-left px-4 py-3 font-semibold text-brand-700/70 text-xs uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-brand-700/70 text-xs uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-brand-700/70 text-xs uppercase tracking-wider">
-                      City, State
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-brand-700/70 text-xs uppercase tracking-wider">
-                      Primary goal
-                    </th>
-                    <th className="text-left px-4 py-3 font-semibold text-brand-700/70 text-xs uppercase tracking-wider">
-                      Created
-                    </th>
+                  <tr className="border-b border-ink-100 bg-ink-50/70">
+                    {['Email', 'Name', 'City, State', 'Primary goal', 'Joined'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-400">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-brand-100">
+                <tbody className="divide-y divide-ink-100">
                   {leads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-brand-50/30 transition-colors">
-                      <td className="px-4 py-3 text-ink max-w-[200px] truncate" title={lead.email}>
+                    <tr key={lead.id} className="transition-colors hover:bg-brand-50/40">
+                      <td className="max-w-[200px] truncate px-4 py-3 text-ink-800" title={lead.email}>
                         {lead.email}
                       </td>
-                      <td className="px-4 py-3 text-ink">{lead.name}</td>
-                      <td className="px-4 py-3 text-brand-700/80">{lead.city_state}</td>
-                      <td className="px-4 py-3 text-brand-700/80">{lead.household_goal}</td>
-                      <td className="px-4 py-3 text-brand-600/60 text-xs">
-                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        }) : '—'}
-                      </td>
+                      <td className="px-4 py-3 text-ink-800">{lead.name}</td>
+                      <td className="px-4 py-3 text-ink-600">{lead.city_state}</td>
+                      <td className="px-4 py-3 text-ink-600">{lead.household_goal}</td>
+                      <td className="px-4 py-3 text-xs text-ink-400">{formatDate(lead.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -278,8 +270,9 @@ export default function AdminPage() {
         )}
       </div>
 
-      <p className="mt-8 text-xs text-brand-600/60 text-center leading-relaxed">
-        This dashboard is for ClearFlow pilot operations. Lead data is stored in-memory and is not backed by a persistent database in this MVP.
+      <p className="mx-auto mt-8 max-w-lg text-center text-xs leading-relaxed text-ink-400">
+        ClearFlow pilot operations. Lead and activity data live in your browser for this demo and are not
+        backed by a server or shared with anyone.
       </p>
     </div>
   );

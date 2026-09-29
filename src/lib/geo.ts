@@ -7,9 +7,9 @@ export interface GeoResult {
   formatted_address: string
 }
 
-// Canonical water-system shape used across the app (db.ts, results page,
-// WaterQualityBadge). snake_case is canonical because the matcher below and
-// results/page.tsx already consume this shape.
+// Canonical water-system shape used across the app (db.ts, results page).
+// snake_case is canonical because the matcher below and results/page.tsx
+// already consume this shape.
 export interface WaterSystem {
   pwsid: string
   name: string

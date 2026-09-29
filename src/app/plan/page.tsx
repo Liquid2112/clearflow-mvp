@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { getUserRecommendation, getUserCheck } from '@/lib/db';
+import { getUserRecommendation, getUserCheck, createLead } from '@/lib/db';
 import { fetchComplianceData } from '@/lib/epa';
 import { computeWaterGrade, projectGradeWithPlan, type WaterGrade } from '@/lib/grade';
 
@@ -92,14 +92,23 @@ function PlanContent() {
     setFormLoading(true);
     setFormSuccess(false);
 
-    // Simulate lead submission — in production replace with API call
+    // Persist the lead to the client-side store (localStorage) so the admin
+    // dashboard can see it later in this browser. There is no server under the
+    // static export, so this browser store is the pilot's only "database".
     setTimeout(() => {
       if (!form.name || !form.email || !form.city_state || !form.household_goal) {
         setFormError('Please fill in all required fields.');
         setFormLoading(false);
         return;
       }
-      // Success — in production this would POST to /api/lead
+      createLead({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        city_state: form.city_state.trim(),
+        household_goal: form.household_goal,
+        phone: form.phone.trim() || null,
+        consent_timestamp: new Date().toISOString(),
+      });
       setFormSuccess(true);
       setFormLoading(false);
     }, 500);
